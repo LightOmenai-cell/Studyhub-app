@@ -45,7 +45,7 @@ export default function PastQuestionsPage() {
         `https://questions.aloc.com.ng/api/v2/m/${examType}?subject=${subject}&year=${year}`,
         {
           headers: {
-            "AccessToken": "YOUR_ALOC_ACCESS_TOKEN",
+            "AccessToken": process.env.NEXT_PUBLIC_ALOC_TOKEN || "",
           },
         }
       );
