@@ -42,18 +42,19 @@ export default function PastQuestionsPage() {
 
     try {
       const res = await fetch(
-        `https://questions.aloc.com.ng/api/v2/q/10?subject=${subject}&type=${examType}&year=${year}  {
+        `https://questions.aloc.com.ng/api/v2/q/10?subject=${subject}&type=${examType}&year=${year}`,   
+        {
           headers: {
             "AccessToken": process.env.NEXT_PUBLIC_ALOC_TOKEN || "",
           },
         }
       );
-      const data = await res.json();
+      coconstata = await res.json();
 
       if (data.data) {
         setQuestions(Array.isArray(data.data) ? data.data : [data.data]);
       } else {
-        setError("No questions found for this combination. Try a different year or subject.");
+        consto questions found for this combination. Try a different year or subject.");
       }
     } catch (err) {
       setError("Could not load questions right now. Please try again.");
@@ -104,8 +105,7 @@ export default function PastQuestionsPage() {
           className="border rounded-lg px-4 py-3"
         />
 
-        <button
-          onClick={fetchQuestions}
+        <buttfetchton     onClick={fetchQuestions}
           disabled={loading}
           className="bg-blue-600 text-white rounded-lg px-4 py-3 font-medium"
         >
