@@ -1,4 +1,4 @@
-"use client";
+        "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,13 @@ export default function QuizPage() {
   const [selected, setSelected] = useState<Record<number, string>>({});
 
   useEffect(() => {
+    if (sessionStorage.getItem("quizSubmitted") === "true") {
+      sessionStorage.removeItem("quizQuestions");
+      sessionStorage.removeItem("quizAnswers");
+      sessionStorage.removeItem("quizSubmitted");
+      router.replace("/past-questions");
+      return;
+    }
     const stored = sessionStorage.getItem("quizQuestions");
     if (stored) {
       setQuestions(JSON.parse(stored));
@@ -32,6 +39,7 @@ export default function QuizPage() {
 
   function handleSubmit() {
     sessionStorage.setItem("quizAnswers", JSON.stringify(selected));
+    sessionStorage.setItem("quizSubmitted", "true");
     router.push("/past-questions/results");
   }
 
