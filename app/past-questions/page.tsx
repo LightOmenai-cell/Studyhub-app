@@ -54,8 +54,8 @@ export default function PastQuestionsPage() {
       if (data.data) {
         setQuestions(Array.isArray(data.data) ? data.data : [data.data]);
       } else {
-        setError("No questions found for this combination. Try a different year or subject.");
-      }
+  setError("DEBUG: " + JSON.stringify(data));
+}
     } catch (err) {
       setError("Could not load questions right now. Please try again.");
     }
