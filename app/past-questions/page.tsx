@@ -42,7 +42,7 @@ export default function PastQuestionsPage() {
 
     try {
       const res = await fetch(
-        `https://questions.aloc.com.ng/api/v2/q?subject=${subject}&type=${examType}&year=${year}`,
+        `https://questions.aloc.com.ng/api/v2/q/20?subject=${subject}&type=${examType}&year=${year}`,
         {
           headers: {
             "AccessToken": process.env.NEXT_PUBLIC_ALOC_TOKEN || "",
