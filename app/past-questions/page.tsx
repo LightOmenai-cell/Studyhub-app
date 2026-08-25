@@ -1,4 +1,4 @@
-"use client";
+    "use client";
 
 import { useState } from "react";
 
@@ -54,10 +54,10 @@ export default function PastQuestionsPage() {
       if (data.data) {
         setQuestions(Array.isArray(data.data) ? data.data : [data.data]);
       } else {
-  setError("DEBUG: " + JSON.stringify(data));
-}
+        setError("DEBUG: " + JSON.stringify(data));
+      }
     } catch (err) {
-      setError("Could not load questions right now. Please try again.");
+      setError("DEBUG CATCH: " + String(err));
     }
     setLoading(false);
   }
@@ -161,7 +161,4 @@ export default function PastQuestionsPage() {
       )}
     </main>
   );
-}
-          
-            
-      
+          }    
