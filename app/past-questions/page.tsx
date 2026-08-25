@@ -121,8 +121,7 @@ export default function PastQuestionsPage() {
           <p className="text-sm text-gray-500 mb-2">
             Question {current + 1} of {questions.length}
           </p>
-          <p className="font-medium mb-4">{q.question}</p>
-
+        <p className="font-medium mb-4" dangerouslySetInnerHTML={{ __html: q.question }} />
           <div className="flex flex-col gap-2">
             {Object.entries(q.option || {}).map(([key, value]) =>
               value ? (
@@ -132,8 +131,7 @@ export default function PastQuestionsPage() {
                   className={`border rounded-lg px-4 py-3 text-left ${
                     selected[q.id] === key ? "border-blue-600 bg-blue-50" : ""
                   }`}
-                >
-                  {key.toUpperCase()}. {value}
+                >{key.toUpperCase()}. <span dangerouslySetInnerHTML={{ __html: value }} />
                 </button>
               ) : null
             )}
