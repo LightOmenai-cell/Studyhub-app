@@ -30,6 +30,9 @@ export default function PastQuestionsPage() {
       if (data.data) {
         const questions = Array.isArray(data.data) ? data.data : [data.data];
         sessionStorage.setItem("quizQuestions", JSON.stringify(questions));
+        sessionStorage.setItem("quizSubject", subject);
+        sessionStorage.setItem("quizExamType", examType);
+        sessionStorage.setItem("quizYear", year);
         router.push("/past-questions/quiz");
       } else {
         setError("DEBUG: " + JSON.stringify(data));
