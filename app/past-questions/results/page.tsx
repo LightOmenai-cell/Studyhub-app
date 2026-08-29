@@ -1,7 +1,8 @@
-"use client";
+        "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 interface Question {
   id: number;
@@ -15,6 +16,7 @@ export default function ResultsPage() {
   const router = useRouter();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const storedQ = sessionStorage.getItem("quizQuestions");
@@ -26,6 +28,42 @@ export default function ResultsPage() {
       router.push("/past-questions");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (questions.length === 0 || saved) return;
+
+    async function saveResults() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const totalQuestions = questions.length;
+      const totalFilled = Object.keys(answers).length;
+      const totalCorrect = questions.filter(
+        (q) => answers[q.id] && q.answer && answers[q.id] === q.answer
+      ).length;
+      const totalWrong = totalFilled - totalCorrect;
+      const totalUnanswered = totalQuestions - totalFilled;
+
+      await supabase.from("quiz_history").insert({
+        user_id: user.id,
+        subject: sessionStorage.getItem("quizSubject") || "unknown",
+        exam_type: sessionStorage.getItem("quizExamType") || "unknown",
+        year: sessionStorage.getItem("quizYear") || "unknown",
+        total_questions: totalQuestions,
+        correct_count: totalCorrect,
+        wrong_count: totalWrong,
+        unanswered_count: totalUnanswered,
+      });
+
+      setSaved(true);
+    }
+
+    saveResults();
+  }, [questions, answers, saved]);
 
   if (questions.length === 0) {
     return (
@@ -44,6 +82,9 @@ export default function ResultsPage() {
   function tryAgain() {
     sessionStorage.removeItem("quizQuestions");
     sessionStorage.removeItem("quizAnswers");
+    sessionStorage.removeItem("quizSubject");
+    sessionStorage.removeItem("quizExamType");
+    sessionStorage.removeItem("quizYear");
     router.push("/past-questions");
   }
 
@@ -116,4 +157,4 @@ export default function ResultsPage() {
       </button>
     </main>
   );
-      }
+}
