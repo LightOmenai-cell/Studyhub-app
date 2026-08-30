@@ -1,6 +1,7 @@
-"use client";
+            "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface Book {
   id: string;
@@ -39,6 +40,25 @@ export default function BooksPage() {
       console.error(err);
     }
     setLoading(false);
+  }
+
+  async function logBookView(book: Book) {
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase.from("book_history").insert({
+        user_id: user.id,
+        book_title: book.title,
+        book_authors: book.authors ? book.authors.join(", ") : null,
+        thumbnail_url: book.thumbnail || null,
+      });
+    } catch (err) {
+      console.error("Failed to log book view:", err);
+    }
   }
 
   return (
@@ -111,6 +131,7 @@ export default function BooksPage() {
                   href={book.link}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => logBookView(book)}
                   className="text-blue-600 text-sm mt-1 inline-block"
                 >
                   Preview / Read
@@ -122,4 +143,4 @@ export default function BooksPage() {
       </div>
     </main>
   );
-      }
+              }
