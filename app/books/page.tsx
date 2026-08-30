@@ -53,7 +53,7 @@ export default function BooksPage() {
       const res = await fetch(
         `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
           searchTerm
-        )}&maxResults=40`
+        )}&maxResults=40&key=${process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY}`
       );
       const data = await res.json();
       const results: Book[] = (data.items || []).map((item: any) => {
@@ -214,4 +214,4 @@ export default function BooksPage() {
       </div>
     </main>
   );
-  }
+            }
