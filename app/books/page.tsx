@@ -12,6 +12,8 @@ interface Book {
   previewLink?: string;
   pdfDownloadLink?: string;
   epubDownloadLink?: string;
+  epubSource?: "google" | "gutenberg";
+  source: "google" | "openlibrary";
 }
 
 export default function BooksPage() {
@@ -46,38 +48,110 @@ export default function BooksPage() {
     }
   }
 
+  // Checks Project Gutenberg (Gutendex) for a free EPUB when nothing else has one.
+  // Fails silently if Gutenberg is slow/unavailable — never blocks the search.
+  async function checkGutenbergFallback(book: Book) {
+    try {
+      const res = await fetch(
+        `https://gutendex.com/books?search=${encodeURIComponent(book.title)}`
+      );
+      const data = await res.json();
+      const match = data.results?.[0];
+      const epubLink = match?.formats?.["application/epub+zip"];
+      if (epubLink) {
+        setBooks((prev) =>
+          prev.map((b) =>
+            b.id === book.id
+              ? { ...b, epubDownloadLink: epubLink, epubSource: "gutenberg" }
+              : b
+          )
+        );
+      }
+    } catch (err) {
+      // Gutenberg unreachable or no match — leave as-is, no error shown
+    }
+  }
+
+  async function fetchGoogleResults(searchTerm: string): Promise<Book[]> {
+    const res = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
+        searchTerm
+      )}&maxResults=40&key=${process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY}`
+    );
+    const data = await res.json();
+    return (data.items || []).map((item: any) => {
+      const pdfAvailable = item.accessInfo?.pdf?.isAvailable;
+      const epubAvailable = item.accessInfo?.epub?.isAvailable;
+
+      return {
+        id: `google-${item.id}`,
+        title: item.volumeInfo?.title || "Untitled",
+        authors: item.volumeInfo?.authors,
+        description: item.volumeInfo?.description,
+        thumbnail: item.volumeInfo?.imageLinks?.thumbnail,
+        previewLink: item.volumeInfo?.previewLink || item.volumeInfo?.infoLink,
+        pdfDownloadLink: pdfAvailable
+          ? item.accessInfo?.pdf?.downloadLink
+          : undefined,
+        epubDownloadLink: epubAvailable
+          ? item.accessInfo?.epub?.downloadLink
+          : undefined,
+        epubSource: epubAvailable ? "google" : undefined,
+        source: "google",
+      };
+    });
+  }
+
+  async function fetchOpenLibraryResults(searchTerm: string): Promise<Book[]> {
+    try {
+      const res = await fetch(
+        `https://openlibrary.org/search.json?q=${encodeURIComponent(
+          searchTerm
+        )}&limit=20&fields=key,title,author_name,cover_i`
+      );
+      const data = await res.json();
+      return (data.docs || []).map((doc: any) => ({
+        id: `ol-${doc.key}`,
+        title: doc.title || "Untitled",
+        authors: doc.author_name,
+        thumbnail: doc.cover_i
+          ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+          : undefined,
+        previewLink: `https://openlibrary.org${doc.key}`,
+        source: "openlibrary",
+      }));
+    } catch (err) {
+      // Open Library unreachable — just skip it, Google results still show
+      return [];
+    }
+  }
+
   async function searchBooks(searchTerm: string) {
     if (!searchTerm) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
-          searchTerm
-        )}&maxResults=40&key=${process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY}`
-      );
-      const data = await res.json();
-      const results: Book[] = (data.items || []).map((item: any) => {
-        const pdfAvailable = item.accessInfo?.pdf?.isAvailable;
-        const epubAvailable = item.accessInfo?.epub?.isAvailable;
+      const [googleResults, openLibraryResults] = await Promise.all([
+        fetchGoogleResults(searchTerm),
+        fetchOpenLibraryResults(searchTerm),
+      ]);
 
-        return {
-          id: item.id,
-          title: item.volumeInfo?.title || "Untitled",
-          authors: item.volumeInfo?.authors,
-          description: item.volumeInfo?.description,
-          thumbnail: item.volumeInfo?.imageLinks?.thumbnail,
-          previewLink: item.volumeInfo?.previewLink || item.volumeInfo?.infoLink,
-          pdfDownloadLink: pdfAvailable
-            ? item.accessInfo?.pdf?.downloadLink
-            : undefined,
-          epubDownloadLink: epubAvailable
-            ? item.accessInfo?.epub?.downloadLink
-            : undefined,
-        };
-      });
+      // Skip Open Library entries that are clearly the same book Google already found
+      const googleTitles = new Set(
+        googleResults.map((b) => b.title.trim().toLowerCase())
+      );
+      const uniqueOpenLibrary = openLibraryResults.filter(
+        (b) => !googleTitles.has(b.title.trim().toLowerCase())
+      );
+
+      const results = [...googleResults, ...uniqueOpenLibrary];
       setBooks(results);
 
       logHistory({ action_type: "search", search_query: searchTerm });
+
+      // Background check: for any book with no download at all, ask Gutenberg
+      results
+        .filter((b) => !b.pdfDownloadLink && !b.epubDownloadLink)
+        .forEach((b) => checkGutenbergFallback(b));
     } catch (err) {
       console.error(err);
     }
@@ -165,7 +239,7 @@ export default function BooksPage() {
                 )}
 
                 {hasDownload ? (
-                  <div className="flex gap-3 mt-2">
+                  <div className="flex gap-3 mt-2 items-center">
                     {book.pdfDownloadLink && (
                       <a
                         href={book.pdfDownloadLink}
@@ -188,6 +262,11 @@ export default function BooksPage() {
                         ⬇ Download EPUB
                       </a>
                     )}
+                    {book.epubSource === "gutenberg" && (
+                      <span className="text-xs text-gray-400">
+                        via Project Gutenberg
+                      </span>
+                    )}
                   </div>
                 ) : (
                   book.previewLink && (
@@ -199,7 +278,9 @@ export default function BooksPage() {
                         onClick={() => handleBookOpen(book)}
                         className="text-blue-600 text-sm inline-block"
                       >
-                        Preview / Read
+                        {book.source === "openlibrary"
+                          ? "View on Open Library"
+                          : "Preview / Read"}
                       </a>
                       <span className="text-xs text-gray-400 block mt-0.5">
                         Preview only — PDF/EPUB download not available for this book
@@ -214,4 +295,4 @@ export default function BooksPage() {
       </div>
     </main>
   );
-            }
+        }
